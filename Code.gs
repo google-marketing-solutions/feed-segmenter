@@ -108,7 +108,8 @@ function initializeSheets() {
 function loadEntity(attribute) {
   const request = {
     query: `SELECT DISTINCT ${attribute.sql}
-      FROM \`${GCP_PROJECT_ID}.${BQ_DATASET_ID}.${BQ_TABLE}\``,
+      FROM \`${GCP_PROJECT_ID}.${BQ_DATASET_ID}.${BQ_TABLE}\`
+      WHERE DATE(_PARTITIONTIME) > TIMESTAMP_SUB(CURRENT_DATE(), INTERVAL 2 Day)`,
     useLegacySql: false
   };
   let queryResults = BigQuery.Jobs.query(request, GCP_PROJECT_ID);
@@ -174,8 +175,10 @@ function updateFeedinCloudStorage() {
         conditions.push(`${ATTRIBUTES[j].sql} = "${value}"`);
       }
     }
-    let sqlConditions = conditions.join(" AND ");
-    sqlParts.push(`(${sqlConditions})`);
+    if (conditions.length > 0) {
+      let sqlConditions = conditions.join(" AND ");
+      sqlParts.push(`(${sqlConditions})`);
+    }
   }
 
   const filterListSheet = getSheet(FILTER_LIST_SHEET);
@@ -204,7 +207,7 @@ function updateFeedinCloudStorage() {
         query: `SELECT DISTINCT ${EXPORT_ID},
           '${CUSTOM_COLUMN_VALUE}' AS ${CUSTOM_COLUMN}
           FROM \`${GCP_PROJECT_ID}.${BQ_DATASET_ID}.${BQ_TABLE}\`
-          WHERE ${sqlWhere}`,
+          WHERE DATE(_PARTITIONTIME) > TIMESTAMP_SUB(CURRENT_DATE(), INTERVAL 2 Day) AND (${sqlWhere})`,
         useLegacySql: false,
         writeDisposition: "WRITE_TRUNCATE"
       }
@@ -239,13 +242,19 @@ function updateFeedinCloudStorage() {
  * Helper function to call Jobs.insert and wait
  */
 function insertJobSynchronous(job) {
-  const jobResult = BigQuery.Jobs.insert(job, GCP_PROJECT_ID);
+  let jobResult = BigQuery.Jobs.insert(job, GCP_PROJECT_ID);
   // Check on status of the Query Job.
   let sleepTimeMs = 500;
-  while (["PENDING", "RUNNING"].indexOf(jobResult.status.state) === 0) {
+  while (jobResult.status.state != "DONE") {
     Utilities.sleep(sleepTimeMs);
     sleepTimeMs *= 2;
-    jobResult = BigQuery.Jobs.get(GCP_PROJECT_ID, jobResult.id);
+    jobResult = BigQuery.Jobs.get(GCP_PROJECT_ID, jobResult.jobReference.jobId, {
+      location: jobResult.jobReference.location
+    });
+  }
+
+  if (jobResult.status.errorResult) {
+    throw new Error(`A BigQuery error occured: ${jobResult.status.errorResult.message}`);
   }
 
   return jobResult;

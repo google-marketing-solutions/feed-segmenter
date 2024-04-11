@@ -9,15 +9,10 @@ and create supplemental feeds, via Cloud Storage.
 
 Clone this repository using the following command:
 ```
-git clone https://professional-services.googlesource.com/solutions/feed_segmenter
+git clone https://github.com/google-marketing-solutions/feed-segmenter
 ```
 
 ### Deploy the Spreadsheet
-
-You can deploy the Spreadsheet either manually by copying the files
-or automatically using Clasp.
-
-**Option A. Manually**
 
 In a new spreadsheet open the Apps Script menu Spreadsheet > Extensions > Apps Script.
 
@@ -37,50 +32,38 @@ const SPREADSHEET_ID = 'YOUR-SPREADSHEET-ID';
 const GCP_PROJECT_ID = 'YOUR-CLOUD-PROJECT';
 // The Bigquery dataset
 const BQ_DATASET_ID = 'YOUR-BIGQUERY-DATASET';
-// The Bigquery table name
-const BQ_TABLE = 'TABLE-NAME';
+// The Bigquery table name, ie. Merchant Center Products table
+const BQ_TABLE = 'Products_123';
 // A table name for the supplemental table
 const BQ_SUPPLEMENTAL_TABLE = 'SUPPLEMENTAL-TABLE';
 // A Cloud Strorage location for the csv export
 const GCS_FEED_FILE = 'gs://YOUR-BUCKET/feed.csv';
 // Custom Column to be appended to feed
-const CUSTOM_COLUMN = 'custom_column';
+const CUSTOM_COLUMN = 'custom_label_0';
 // Value to be assigned to custom column
 const CUSTOM_COLUMN_VALUE = 'Custom Value';
 // BQ Id clumn to export to feed
-const EXPORT_ID = 'id_column';
+const EXPORT_ID = 'offer_id';
 // BQ column name for list filtering
 const FILTER_LIST_COLUMN = 'id_column';
 ```
 Spreadsheet ID can be found from the Spreadsheet url
 ie. https://docs.google.com/spreadsheets/d/**123**/edit
 
-**Option B. Automatically**
+### Configure Cloud Storage feed automated transfer
 
-To create the spreadsheet automatically, you need to run the following in your 
-[Google Cloud Shell](https://cloud.google.com/shell):
-```
-npm install -g @google/clasp
-clasp login --no-localhost
-```
+The Spreadsheet will output a supplemental feed in your Cloud Storage bucket.
+You will need to configure an automated transfer of this file to the Merchant
+Center configured bucket.
 
-After running clasp login, you will be given a url.
-Open the URL, authorize and copy the "Authorization code" of the last step. 
-Paste the code to the terminal.
+1. Enable feeds via Cloud Storage in Merchant Center following the instructions
+[here](https://support.google.com/merchants/answer/185963?hl=en).
 
-Run the following command to create a new Spreadsheet:
+2. Set up a Data Transfer within your Google Cloud Project to automatically
+copy the feed file from Feed Segmenter bucket to Merchant Center bucket,
+using the Service Account of Merchant Center user. See more instructions
+[here](https://cloud.google.com/storage-transfer/docs/event-driven-transfers).
 
-```
-clasp create --type sheets --title "Feed Segmenter"
-```
-
-Configure the parameters of **Code.gs** as mentioned in the previous option.
-Then run the following command to upload the Apps Script to your Spreadsheet.
-
-```
-clasp push
-cd ..
-```
 
 ## Using the solution
 
